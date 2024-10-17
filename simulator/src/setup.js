@@ -146,50 +146,64 @@ function setupElementLists() {
  * @category setup
  */
 export function setup() {
-    const startListeners = embed ? startEmbedListeners : startMainListeners;
-    setupElementLists();
-    setupEnvironment();
-    if (!embed) { setupUI(); }
-    startListeners();
-    if (!embed) { keyBinder(); }
+    try {
+        const startListeners = embed ? startEmbedListeners : startMainListeners;
+        setupElementLists();
+        setupEnvironment();
+        if (!embed) { setupUI(); }
+        startListeners();
+        if (!embed) { keyBinder(); }
 
-    // Load project data after 1 second - needs to be improved, delay needs to be eliminated
-    setTimeout(() => {
-        if (__logix_project_id != 0) {
-            $('.loadingIcon').fadeIn();
-            $.ajax({
-                url: `/simulator/get_data/${__logix_project_id}`,
-                type: 'GET',
-                success(response) {
-                    var data = (response);
-                    if (data) {
-                        load(data);
-                        simulationArea.changeClockTime(data.timePeriod || 500);
-                    }
-                    $('.loadingIcon').fadeOut();
-                },
-                failure() {
-                    alert('Error: could not load ');
-                    $('.loadingIcon').fadeOut();
-                },
-            });
-        } else if (localStorage.getItem('recover_login') && userSignedIn) {
-            // Restore unsaved data and save
-            var data = JSON.parse(localStorage.getItem('recover_login'));
-            load(data);
-            localStorage.removeItem('recover');
-            localStorage.removeItem('recover_login');
-            save();
-        } else if (localStorage.getItem('recover')) {
-            // Restore unsaved data which didn't get saved due to error
-            showMessage("We have detected that you did not save your last work. Don't worry we have recovered them. Access them using Project->Recover");
-        } else if (localStorage.getItem('autosave')) {
-            // Restore unsaved data which didn't get saved due to unexpected simulator crash.
-            showMessage("We have detected an unexpected simulator crash. Don't worry we have recovered your project. Access them using Project->Recover");
+        // Load project data after 1 second - needs to be improved, delay needs to be eliminated
+        setTimeout(() => {
+            if (__logix_project_id != 0) {
+                $('.loadingIcon').fadeIn();
+                $.ajax({
+                    url: `/simulator/get_data/${__logix_project_id}`,
+                    type: 'GET',
+                    success(response) {
+                        var data = (response);
+                        if (data) {
+                            load(data);
+                            simulationArea.changeClockTime(data.timePeriod || 500);
+                        }
+                        $('.loadingIcon').fadeOut();
+                    },
+                    failure() {
+                        alert('Error: could not load ');
+                        $('.loadingIcon').fadeOut();
+                    },
+                });
+            } else if (localStorage.getItem('recover_login') && userSignedIn) {
+                // Restore unsaved data and save
+                var data = JSON.parse(localStorage.getItem('recover_login'));
+                load(data);
+                localStorage.removeItem('recover');
+                localStorage.removeItem('recover_login');
+                save();
+            } else if (localStorage.getItem('recover')) {
+                // Restore unsaved data which didn't get saved due to error
+                showMessage("We have detected that you did not save your last work. Don't worry we have recovered them. Access them using Project->Recover");
+            } else if (localStorage.getItem('autosave')) {
+                // Restore unsaved data which didn't get saved due to unexpected simulator crash.
+                showMessage("We have detected an unexpected simulator crash. Don't worry we have recovered your project. Access them using Project->Recover");
+            }
+        }, 1000);
+
+        if (!localStorage.tutorials_tour_done && !embed) {
+            setTimeout(() => { showTourGuide(); }, 2000);
         }
-    }, 1000);
-
-    if (!localStorage.tutorials_tour_done && !embed) {
-        setTimeout(() => { showTourGuide(); }, 2000);
+    } catch (error) {
+        Sentry.captureException(error); // Capture any errors that occur
     }
 }
+
+// Initialize Sentry after including the SDK via CDN
+Sentry.init({
+  dsn: 'https://a9660d5d8964d5b348b07b77691d61a7@o4507251968376832.ingest.de.sentry.io/4507251969949776',
+  integrations: [
+    // Enable HTTP calls tracing
+    new Sentry.Integrations.BrowserTracing(),
+  ],
+  tracesSampleRate: 1.0,
+});
